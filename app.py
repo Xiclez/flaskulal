@@ -144,13 +144,13 @@ def generate_coupon():
         draw = ImageDraw.Draw(image)
 
         # Cargar la fuente
-        font_size = 32
+        font_size = 64
         try:
             font = ImageFont.truetype(FONT_FULL_PATH, font_size)
         except IOError:
             print(f"Error: No se pudo cargar la fuente en {FONT_FULL_PATH}. Usando fuente predeterminada.")
             font = ImageFont.load_default()
-            font_size = 16 # La fuente predeterminada es más pequeña
+            font_size = 32 # La fuente predeterminada es más pequeña
 
         # Definir las coordenadas para el texto (ajusta según sea necesario)
         folio_x, folio_y = 160, 28
