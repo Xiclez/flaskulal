@@ -1,0 +1,51 @@
+# render.yaml
+# This file defines the services to be deployed on Render.com
+
+# Specifies the Render Blueprint version
+# Learn more: https://render.com/docs/blueprint#specifying-blueprint-version
+version: 1
+
+# Define your services here
+services:
+  # This section defines your Flask web service
+  - type: web
+    name: flask-pdf-renamer-api # A unique name for your service on Render
+    env: python # The language/runtime environment
+    plan: free # Use the free plan for testing
+
+    # The branch to deploy from (usually 'main' or 'master')
+    # Make sure this matches your GitHub repository's main branch
+    buildCommand: pip install -r requirements.txt # Commands to run before starting the service
+    
+    # The command to start your Flask application using Gunicorn
+    # 'app' is the name of your Flask instance in 'app.py'
+    # 'app:app' means look for the 'app' object in the 'app.py' file
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+
+    # Optional: Set environment variables for your application directly in the yaml
+    # However, for sensitive keys, it's better to add them via the Render Dashboard.
+    envVars:
+      - key: PYTHONUNBUFFERED # Ensures logs are streamed in real-time
+        value: "1"
+      # If you had other specific environment variables from .env
+      # that are not sensitive (e.g., specific debug flags), you could add them here.
+      # For example:
+      # - key: MY_CUSTOM_ENV_VAR
+      #   value: "some_value"
+    
+    # Optional: Health Check Path
+    # Render will ping this path to ensure your service is healthy.
+    # Add a simple route like @app.route('/health') that returns a 200 OK.
+    # If not specified, Render will ping the root '/'.
+    # healthCheckPath: /health 
+
+    # Optional: Auto-scaling (only for paid plans)
+    # scaling:
+    #   minInstances: 1
+    #   maxInstances: 1
+
+    # Optional: Disk (for persistent storage, usually not needed for serverless APIs)
+    # disk:
+    #   name: mydata
+    #   mountPath: /data
+    #   sizeGB: 1
