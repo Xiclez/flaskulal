@@ -261,6 +261,7 @@ def rename_pdf():
                 print(f"Error al limpiar el directorio temporal {temp_dir}: {e}")
 
 # --- Iniciar el servidor Flask ---
-#if __name__ == '__main__':
+if __name__ == '__main__':
 #    print(f"Backend corriendo en http://localhost:{FLASK_RUN_PORT}")
 #    app.run(debug=True, port=FLASK_RUN_PORT) # debug=True para desarrollo, cambiar a False en producción
+    pass
