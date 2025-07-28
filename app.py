@@ -190,40 +190,34 @@ def generate_coupon():
 # --- Nuevo Endpoint para renombrar PDFs ---
 @app.route('/api/renamePDF', methods=['POST'])
 def rename_pdf():
-    # Check if a file was uploaded
     if 'zip_file' not in request.files:
         return jsonify({"error": "No se encontró el archivo ZIP en la solicitud. Asegúrate de que el nombre del campo sea 'zip_file'."}), 400
 
     zip_file = request.files['zip_file']
 
-    # Check if the file is actually a ZIP
     if not zip_file.filename.endswith('.zip'):
         return jsonify({"error": "El archivo cargado no es un archivo ZIP."}), 400
 
     # Create temporary directories for processing
-    # Using tempfile.mkdtemp() is safer and handles cleanup better
-    temp_dir = None
-    output_zip_path = None
-    try:
-        temp_dir = tempfile.mkdtemp()
-        extracted_dir = os.path.join(temp_dir, 'extracted_pdfs')
-        os.makedirs(extracted_dir)
+    # Vercel's /tmp directory is ephemeral and cleaned up automatically.
+    # No manual cleanup needed in 'finally' block for deployment.
+    temp_dir = tempfile.mkdtemp()
+    extracted_dir = os.path.join(temp_dir, 'extracted_pdfs')
+    os.makedirs(extracted_dir)
+    output_zip_path = None 
 
-        # Save the uploaded ZIP file to a temporary location
+    try:
         uploaded_zip_path = os.path.join(temp_dir, zip_file.filename)
         zip_file.save(uploaded_zip_path)
         print(f"Archivo ZIP guardado temporalmente en: {uploaded_zip_path}")
 
-        # Extract the ZIP file
         print(f"📦 Descomprimiendo '{os.path.basename(uploaded_zip_path)}'...")
         with zipfile.ZipFile(uploaded_zip_path, 'r') as zf:
             zf.extractall(extracted_dir)
         print("¡Descompresión completa!")
 
-        # Perform the renaming
         renombrados_info, advertencias_errores = renombrar_pdfs_en_directorio(extracted_dir)
 
-        # Create the new ZIP file with renamed PDFs
         output_zip_name = 'renombrados.zip'
         output_zip_path = os.path.join(temp_dir, output_zip_name)
         
@@ -231,15 +225,14 @@ def rename_pdf():
         with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_out:
             for dirpath, _, filenames in os.walk(extracted_dir):
                 for filename in filenames:
-                    # Ensure only PDFs are added and ignore any temporary files
                     if filename.lower().endswith('.pdf'):
                         full_path = os.path.join(dirpath, filename)
-                        # arcname is the relative path inside the zip file
                         arcname = os.path.relpath(full_path, extracted_dir)
                         zip_out.write(full_path, arcname)
         print(f"🎉 Archivo '{output_zip_name}' creado con éxito.")
 
-        # Send the new ZIP file back to the client
+        # send_file automatically handles closing the file and streaming it.
+        # Vercel's environment will clean up temp_dir after the function finishes.
         return send_file(output_zip_path,
                          mimetype='application/zip',
                          as_attachment=True,
@@ -252,16 +245,22 @@ def rename_pdf():
         print(f"Error inesperado en /api/renamePDF: {e}")
         return jsonify({"error": f"Error interno del servidor al procesar los PDFs: {str(e)}"}), 500
     finally:
-        # Clean up temporary directory
+        # For Vercel, manual cleanup here is usually not needed as /tmp is ephemeral.
+        # On local Windows, this might still cause WinError 32 if the file handle isn't released immediately.
+        # But for Vercel, this block can often be removed or simplified.
         if temp_dir and os.path.exists(temp_dir):
             try:
-                shutil.rmtree(temp_dir)
-                print(f"Directorio temporal limpiado: {temp_dir}")
+                # Adding a small delay or a more robust cleanup might be needed for *local Windows testing*,
+                # but on Vercel's Linux environment, the ephemeral nature usually handles it.
+                # For robust cross-platform local testing, consider a separate cleanup script or an in-memory ZIP for the final output.
+                # For Vercel, simply removing the manual cleanup for temp_dir is often the fix.
+                pass # Removed shutil.rmtree here for Vercel deployment
             except OSError as e:
-                print(f"Error al limpiar el directorio temporal {temp_dir}: {e}")
+                print(f"Error al intentar limpiar el directorio temporal {temp_dir}: {e}")
+
 
 # --- Iniciar el servidor Flask ---
 if __name__ == '__main__':
-#    print(f"Backend corriendo en http://localhost:{FLASK_RUN_PORT}")
-#    app.run(debug=True, port=FLASK_RUN_PORT) # debug=True para desarrollo, cambiar a False en producción
-    pass
+    # print(f"Backend corriendo en http://localhost:{FLASK_RUN_PORT}") # Keep for local debugging visibility
+    # app.run(debug=True, port=FLASK_RUN_PORT) # <--- THIS LINE MUST BE COMMENTED OUT OR REMOVED FOR VERCEL
+    pass # This 'pass' ensures the block is valid even if app.run is commented/removed.
